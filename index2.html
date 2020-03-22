@@ -1,0 +1,150 @@
+<link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900|Material+Icons" rel="stylesheet" type="text/css">
+<link href="https://cdn.jsdelivr.net/npm/quasar@1.9.10/dist/quasar.min.css" rel="stylesheet" type="text/css">
+
+<div id="q-app" style="position:absolute;top:5;left:5;width:300px">
+  <q-btn
+    label="Add a person"
+    flat
+    @click="addPerson"
+  >
+  </q-btn>
+
+  <div v-if="people.length>0">
+    <q-list padding bordered class="rounded-borders">
+      <q-expansion-item v-for="(person, index) in people"
+        dense
+        dense-toggle
+        expand-separator
+        icon="perm_identity"
+      >
+        <template v-slot:header>
+          <q-item-section avatar>
+            <q-avatar icon="perm_identity" />
+          </q-item-section>
+          <q-item-section>
+            <q-input borderless v-model="person.name" placeholder="Enter your name" />
+          </q-item-section>
+          <q-item-section avatar>
+            <q-btn
+              flat
+              dense
+              icon="remove_circle_outline"
+              @click="deletePerson($event, index)"
+            >
+            </q-btn>
+          </q-item-section>
+        </template>
+        <q-card>
+          <q-card-section>
+            <q-select
+              label="Skills"
+              filled
+              v-model="person.skills"
+              use-input
+              use-chips
+              multiple
+              hide-dropdown-icon
+              input-debounce="0"
+              new-value-mode="add-unique"
+              :options="options"
+              @filter="filterFn"
+              @new-value="createValue"
+              @input="draw"
+            ></q-select>
+          </q-card-section>
+        </q-card>
+      </q-expansion-item>
+    </q-list>
+  </div>
+
+</div>
+
+<div id="chart"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/vue@^2.0.0/dist/vue.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/quasar@1.9.10/dist/quasar.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/quasar@1.9.10/dist/icon-set/svg-material-icons.umd.min.js"></script>
+
+<script type="module">
+  import {Runtime, Inspector} from "https://cdn.jsdelivr.net/npm/@observablehq/runtime@4/dist/runtime.js";
+  import notebook from "https://api.observablehq.com/@r03ert0/circle-of-friends.js?v=3";
+  const main = new Runtime().module(notebook, (name) => {
+      if(name === "mychart") {
+          console.log(name);
+          return new Inspector(document.getElementById("chart"));
+      }
+  });
+  
+  // const data = {
+  //   "nodes": [
+  //     {"id": "Myriel", "group": 1},
+  //     {"id": "Napoleon", "group": 1},
+  //     {"id": "Mlle.Baptistine", "group": 1}
+  //   ],
+  //   "links": [
+  //     {"source": "Napoleon", "target": "Myriel", "value": 1},
+  //     {"source": "Mlle.Baptistine", "target": "Myriel", "value": 8}
+  //   ]
+  // };
+  const data = {
+    "nodes": [],
+    "links": []
+  };
+  
+  main.redefine("miserable", data);
+
+  Quasar.iconSet.set(Quasar.iconSet.svgMaterialIcons)
+  const stringOptions = [ "Canta", "Baila", "Hace las tareas", "Cuenta chistes",
+    "Juega Atari", "No responde", "Bueno para el dibujo", "Ordenado",
+    "Habla jerigoncio", "Buena letra", "Bueno para las matemáticas",
+    "Lee de corrido", "Seco para el trompo" ]
+  new Vue({
+    el: '#q-app',
+    data () {
+      return {
+        people: [],
+        modelAddUnique: null,
+        options: stringOptions
+      }
+    },
+    methods: {
+      filterFn (val, update, abort) {
+        update(() => {
+          const needle = val.toLowerCase()
+          this.options = stringOptions.filter(v => v.toLowerCase().indexOf(needle) > -1)
+        })
+      },
+      createValue (val, done) {
+        stringOptions.push(val)
+        done(val)
+      },
+      addPerson (e) {
+        this.people.push({name:"",skills:[]})
+      },
+      deletePerson (e, index) {
+        console.log(index, this.people[index])
+        this.people.splice(index,1)
+        event.stopPropagation()
+      },
+      draw (e) {
+        const nodes = this.people.map((p) => {
+          return {id:p.name, group: 1}
+        })
+        const links = [];
+        for(let i=0;i<this.people.length-1;i++) {
+            for(let j=i+1;j<this.people.length;j++) {
+                const src = this.people[i];
+                const trg = this.people[j];
+                const srcSkills = src.skills;
+                const trgSkills = trg.skills;
+                const common = srcSkills.filter(skill => trgSkills.includes(skill));
+                if(common.length > 0) {
+                    links.push({source:src.name, target:trg.name, value: common.length});
+                }
+            }
+        }
+        main.redefine("miserable", {nodes, links});
+      }
+    }
+  })
+</script>  
